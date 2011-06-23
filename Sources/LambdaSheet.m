@@ -3,17 +3,19 @@
 @interface LambdaSheet () <UIActionSheetDelegate>
 @property(retain) UIActionSheet *sheet;
 @property(retain) NSMutableArray *blocks;
+@property(nonatomic,copy) dispatch_block_t cancelBlock;
 @end
 
 @implementation LambdaSheet
-@synthesize sheet, blocks;
+@synthesize sheet, blocks, cancelBlock;
 
-- (id) initWithTitle: (NSString*) title
+- (id) initWithTitle: (NSString*) title cancelBlock: (dispatch_block_t) block;
 {
     [super init];
-    sheet = [[UIActionSheet alloc] initWithTitle:title delegate:self
+    self.sheet = [[UIActionSheet alloc] initWithTitle:title delegate:self
         cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil];
-    blocks = [[NSMutableArray alloc] init];
+    self.blocks = [NSMutableArray array];
+    self.cancelBlock = block;
     return self;
 }
 
@@ -21,6 +23,7 @@
 {
     [blocks release];
     [sheet release];
+    [cancelBlock release];
     [super dealloc];
 }
 
@@ -70,6 +73,12 @@
     [self retain];
 }
 
+- (void)showFromBarButtonItem: (UIBarButtonItem*) view
+{
+    [sheet showFromBarButtonItem:view animated:YES];
+    [self retain];
+}
+
 #pragma mark UIActionSheetDelegate
 
 - (void) actionSheet: (UIActionSheet*) actionSheet didDismissWithButtonIndex: (NSInteger) buttonIndex
@@ -78,6 +87,10 @@
     if (buttonIndex >= 0 && buttonIndex < [blocks count]) {
         dispatch_block_t block = [blocks objectAtIndex:buttonIndex];
         block();
+    }
+    else if (buttonIndex == -1 && self.cancelBlock != nil)
+    {
+      self.cancelBlock();
     }
     [self release];
 }
